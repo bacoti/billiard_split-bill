@@ -16,8 +16,10 @@ class GameSession extends Model
     protected $fillable = [
         'user_id',
         'name',
-        'hourly_rate',
-        'tax_percent',
+        'rental_fee', // Ganti nama
+        'pb1_percent',       // Tambahkan
+        'service_percent',   // Tambahkan
+        'tip_amount',        // Tambahkan
         'service_charge',
         'discount',
     ];

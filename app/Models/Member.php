@@ -12,6 +12,8 @@ class Member extends Model
     protected $fillable = [
         'session_id',
         'name',
+        'start_time', // Tambahkan
+        'end_time',   // Tambahkan
     ];
 
     public function session()

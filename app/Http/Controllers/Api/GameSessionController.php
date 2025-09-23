@@ -19,41 +19,30 @@ class GameSessionController extends Controller
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'hourly_rate' => 'required|numeric|min:0',
-            'tax_percent' => 'sometimes|numeric|min:0|max:100',
-            'service_charge' => 'sometimes|numeric|min:0',
-            'discount' => 'sometimes|numeric|min:0',
-            'tables' => 'required|array|min:1',
-            'tables.*.table_number' => 'required|string',
-            'tables.*.duration_hours' => 'required|numeric|min:0',
-            'members' => 'required|array|min:1',
-            'members.*.name' => 'required|string',
+            'rental_fee' => 'required|numeric|min:0', // Diubah dari tarif per jam
+            'pb1_percent' => 'required|numeric|min:0|max:100',
+            'service_percent' => 'required|numeric|min:0|max:100',
+            'tip_amount' => 'required|numeric|min:0',
+            'players' => 'required|array|min:1',
+            'players.*.id' => 'required|exists:players,id', // Validasi ID pemain
+            'players.*.name' => 'required|string',
+            'players.*.start_time' => 'required|date_format:H:i',
+            'players.*.end_time' => 'required|date_format:H:i|after:players.*.start_time',
         ]);
 
         $session = $request->user()->gameSessions()->create([
             'name' => $validated['name'],
-            'hourly_rate' => $validated['hourly_rate'],
-            'tax_percent' => $validated['tax_percent'] ?? 10.0,
-            'service_charge' => $validated['service_charge'] ?? 0,
-            'discount' => $validated['discount'] ?? 0,
+            'rental_fee' => $validated['rental_fee'],
+            'pb1_percent' => $validated['pb1_percent'],
+            'service_percent' => $validated['service_percent'],
+            'tip_amount' => $validated['tip_amount'],
         ]);
-
-        foreach ($validated['tables'] as $tableData) {
-            $cost = $tableData['duration_hours'] * $session->hourly_rate;
-            $session->billiardTables()->create([
-                'table_number' => $tableData['table_number'],
-                'duration_hours' => $tableData['duration_hours'],
-                'cost' => $cost,
-            ]);
+        
+        foreach ($validated['players'] as $playerData) {
+            $session->members()->create($playerData);
         }
 
-        foreach ($validated['members'] as $memberData) {
-            $session->members()->create([
-                'name' => $memberData['name'],
-            ]);
-        }
-
-        return response()->json($session->load(['billiardTables', 'members']), 201);
+        return response()->json($session, 201);
     }
 
     // Ganti parameter $session menjadi $gameSession untuk kejelasan
@@ -63,21 +52,28 @@ class GameSessionController extends Controller
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
-        $gameSession->load(['billiardTables', 'members']);
-        $subtotal = $gameSession->billiardTables->sum('cost');
-        $taxAmount = $subtotal * ($gameSession->tax_percent / 100);
-        $total = $subtotal + $taxAmount + $gameSession->service_charge - $gameSession->discount;
+        $gameSession->load(['members']);
+        
+        // Kalkulasi biaya sewa sekarang langsung dari nilai yang disimpan
+        $rentalCost = $gameSession->rental_fee;
+        $pb1Amount = $rentalCost * ($gameSession->pb1_percent / 100);
+        $serviceAmount = $rentalCost * ($gameSession->service_percent / 100);
+        
+        $grandTotal = $rentalCost + $pb1Amount + $serviceAmount + $gameSession->tip_amount;
+
         $memberCount = $gameSession->members->count();
-        $splitBill = $memberCount > 0 ? $total / $memberCount : 0;
+        $billPerMember = $memberCount > 0 ? $grandTotal / $memberCount : 0;
 
         return response()->json([
             'session' => $gameSession,
             'calculation' => [
-                'subtotal' => round($subtotal, 2),
-                'tax_amount' => round($taxAmount, 2),
-                'total_bill' => round($total, 2),
+                'rental_cost' => round($rentalCost, 2),
+                'pb1_amount' => round($pb1Amount, 2),
+                'service_amount' => round($serviceAmount, 2),
+                'tip_amount' => round($gameSession->tip_amount, 2),
+                'grand_total' => round($grandTotal, 2),
                 'member_count' => $memberCount,
-                'bill_per_member' => round($splitBill, 2),
+                'bill_per_member' => round($billPerMember, 2),
             ]
         ]);
     }
