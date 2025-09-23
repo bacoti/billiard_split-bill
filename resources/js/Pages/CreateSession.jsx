@@ -114,7 +114,7 @@ export default function CreateSession({ auth }) {
                                     </div>
                                     <div className="space-y-2">
                                         <Label htmlFor="rentalFee">Biaya Sewa Lantai (Harian)</Label>
-                                        <Input id="rentalFee" type="number" placeholder="1000000" value={rentalFee} onChange={(e) => setRentalFee(e.target.value)} required />
+                                        <Input id="rentalFee" type="number" placeholder="1000000" value={rentalFee} onChange={(e) => setRentalFee(e.target.value)} required min="1" />
                                     </div>
                                 </div>
                                 
@@ -128,7 +128,7 @@ export default function CreateSession({ auth }) {
                                                     id={`player-${player.id}`}
                                                     onCheckedChange={(checked) => handlePlayerSelection(player, checked)}
                                                 />
-                                                <label htmlFor={`player-${player.id}`} className="text-sm font-medium">{player.name}</label>
+                                                <label htmlFor={`player-${player.id}`} className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">{player.name}</label>
                                             </div>
                                         )) : <p className="text-sm text-muted-foreground">Belum ada anggota. Silakan tambah di halaman Manajemen Anggota.</p>}
                                     </div>
@@ -140,7 +140,7 @@ export default function CreateSession({ auth }) {
                                         <Label className="text-lg font-semibold">Isi Waktu Main</Label>
                                         {attendingPlayers.map((player) => (
                                             <div key={player.id} className="flex flex-col sm:flex-row items-center gap-2 p-3 border rounded-md">
-                                                <Label className="w-full sm:w-1/3">{player.name}</Label>
+                                                <Label className="w-full sm:w-1/3 font-medium">{player.name}</Label>
                                                 <div className="flex w-full sm:w-2/3 gap-2 items-center">
                                                     <Input name="start_time" type="time" onChange={e => handleTimeChange(player.id, 'start_time', e.target.value)} required />
                                                     <span className="text-muted-foreground">-</span>
@@ -155,9 +155,18 @@ export default function CreateSession({ auth }) {
                                 <div className="space-y-4 border-t pt-6">
                                     <Label className="text-lg font-semibold">Biaya Tambahan</Label>
                                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                                        <div className="space-y-2"><Label htmlFor="pb1Percent">PB1 (%)</Label><Input id="pb1Percent" type="number" step="0.1" value={pb1Percent} onChange={(e) => setPb1Percent(e.target.value)} /></div>
-                                        <div className="space-y-2"><Label htmlFor="servicePercent">Service Charge (%)</Label><Input id="servicePercent" type="number" step="0.1" value={servicePercent} onChange={(e) => setServicePercent(e.target.value)} /></div>
-                                        <div className="space-y-2"><Label htmlFor="tipAmount">Tip / Tambahan (Rp)</Label><Input id="tipAmount" type="number" value={tipAmount} onChange={(e) => setTipAmount(e.target.value)} /></div>
+                                        <div className="space-y-2">
+                                            <Label htmlFor="pb1Percent">PB1 (%)</Label>
+                                            <Input id="pb1Percent" type="number" step="0.1" value={pb1Percent} onChange={(e) => setPb1Percent(e.target.value)} />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label htmlFor="servicePercent">Service Charge (%)</Label>
+                                            <Input id="servicePercent" type="number" step="0.1" value={servicePercent} onChange={(e) => setServicePercent(e.target.value)} />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label htmlFor="tipAmount">Tip / Tambahan (Rp)</Label>
+                                            <Input id="tipAmount" type="number" value={tipAmount} onChange={(e) => setTipAmount(e.target.value)} />
+                                        </div>
                                     </div>
                                 </div>
                             </CardContent>

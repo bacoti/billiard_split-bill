@@ -48,8 +48,7 @@ export default function SessionHistory({ auth }) {
             const response = await axios.get(route('api.game-sessions.show', sessionId));
             setSelectedSessionDetails(response.data);
             generateGroupMessage(response.data);
-        } catch (error)
-{
+        } catch (error) {
             toast.error('Gagal memuat detail sesi.');
             console.error(error);
         }
@@ -71,7 +70,7 @@ export default function SessionHistory({ auth }) {
     };
 
     const handleShareToWA = (memberName, billAmount) => {
-        if (!memberName || !billAmount) {
+        if (!memberName || billAmount === undefined) {
             toast.error("Data tidak lengkap untuk membuat pesan WhatsApp.");
             return;
         }
@@ -104,31 +103,28 @@ export default function SessionHistory({ auth }) {
         const message = messageLines.join('\n');
         const encodedMessage = encodeURIComponent(message);
         const whatsappUrl = `https://wa.me/${phoneNumber}?text=${encodedMessage}`;
-        console.log("Generated WhatsApp URL:", whatsappUrl);
         window.open(whatsappUrl, '_blank');
     };
-    
+
     const generateGroupMessage = (details) => {
         if (!details) return;
         const { session, calculation } = details;
         const formattedTotalBill = `Rp ${calculation.grand_total.toLocaleString('id-ID')}`;
-        const formattedBillPerMember = `Rp ${calculation.bill_per_member.toLocaleString('id-ID')}`;
-        const memberList = session.members.map((member, index) => 
-            `${index + 1}. ${member.name}`
-        ).join('\n');
+        
+        const memberList = session.members.map((member, index) => {
+            const formattedBill = `Rp ${member.bill.toLocaleString('id-ID')}`;
+            return `${index + 1}. ${member.name} -> *${formattedBill}*`;
+        }).join('\n');
+
         const messageLines = [
             `*-- 🎱 Bill Summary: ${session.name} --*`,
             ``,
             `Halo semua, berikut rincian biaya main biliar kita ya.`,
             ``,
             `*Total Tagihan Keseluruhan: ${formattedTotalBill}*`,
-            `Total Pemain: ${calculation.member_count} orang`,
-            ``,
-            `Patungan per orang:`,
-            `*${formattedBillPerMember}*`,
             ``,
             `--------------------`,
-            `*Daftar Hadir:*`,
+            `*Rincian Tagihan per Orang (Proporsional):*`,
             memberList,
             `--------------------`,
             ``,
@@ -145,7 +141,47 @@ export default function SessionHistory({ auth }) {
     };
 
     const handleExportPDF = () => {
-        // Implementasi PDF jika diperlukan
+        if (!selectedSessionDetails) return;
+        const doc = new jsPDF();
+        const { session, calculation } = selectedSessionDetails;
+
+        // Header Dokumen
+        doc.setFontSize(20);
+        doc.text(session.name, 14, 22);
+        doc.setFontSize(11);
+        doc.setTextColor(100);
+        doc.text(`Tanggal: ${new Date(session.created_at).toLocaleString('id-ID')}`, 14, 30);
+
+        // Tabel Rincian Biaya
+        doc.autoTable({
+            startY: 40,
+            head: [['Deskripsi', 'Jumlah']],
+            body: [
+                ['Biaya Sewa', `Rp ${calculation.rental_cost.toLocaleString('id-ID')}`],
+                [`PB1 (${session.pb1_percent}%)`, `Rp ${calculation.pb1_amount.toLocaleString('id-ID')}`],
+                [`Service (${session.service_percent}%)`, `Rp ${calculation.service_amount.toLocaleString('id-ID')}`],
+                ['Tip / Tambahan', `Rp ${calculation.tip_amount.toLocaleString('id-ID')}`],
+            ],
+            theme: 'grid',
+            footStyles: { fontStyle: 'bold' },
+            foot: [['TOTAL TAGIHAN', `Rp ${calculation.grand_total.toLocaleString('id-ID')}`]]
+        });
+
+        let finalY = doc.lastAutoTable.finalY;
+
+        // Tabel Rincian Pemain
+        doc.autoTable({
+            startY: finalY + 10,
+            head: [['Nama Pemain', 'Waktu Main', 'Tagihan (Proporsional)']],
+            body: session.members.map(member => [
+                member.name,
+                `${member.start_time.substring(0, 5)} - ${member.end_time.substring(0, 5)}`,
+                `Rp ${member.bill.toLocaleString('id-ID')}`
+            ]),
+            theme: 'striped',
+        });
+        
+        doc.save(`split-bill-${session.name.replace(/\s+/g, '-')}.pdf`);
     };
 
     return (
@@ -198,8 +234,10 @@ export default function SessionHistory({ auth }) {
             }}>
               <SheetContent className="w-full sm:max-w-lg overflow-y-auto">
                 <SheetHeader>
-                  <SheetTitle>{selectedSessionDetails?.session.name}</SheetTitle>
-                  <SheetDescription>Rincian tagihan dan opsi untuk berbagi.</SheetDescription>
+                  <SheetTitle>{selectedSessionDetails?.session.name || 'Rincian Sesi'}</SheetTitle>
+                  <SheetDescription>
+                    Rincian tagihan dan opsi untuk berbagi.
+                  </SheetDescription>
                 </SheetHeader>
                 {selectedSessionDetails ? (
                     <div className="mt-6 space-y-6">
@@ -235,7 +273,7 @@ export default function SessionHistory({ auth }) {
                         <Card>
                             <CardHeader>
                                 <CardTitle>Pembagian per Anggota</CardTitle>
-                                <CardDescription>Rincian per pemain yang hadir.</CardDescription>
+                                <CardDescription>Tagihan dihitung proporsional sesuai durasi main.</CardDescription>
                             </CardHeader>
                             <CardContent>
                                 <Table>
@@ -250,17 +288,16 @@ export default function SessionHistory({ auth }) {
                                             <TableRow key={member.id}>
                                                 <TableCell>
                                                     <div className="font-medium">{member.name}</div>
-                                                    {/* INI BAGIAN YANG DITAMBAHKAN */}
                                                     <div className="flex items-center text-xs text-muted-foreground mt-1">
                                                         <Clock className="h-3 w-3 mr-1.5" />
                                                         {member.start_time.substring(0, 5)} - {member.end_time.substring(0, 5)}
                                                     </div>
                                                     <div className="text-sm font-mono mt-2">
-                                                        Rp {selectedSessionDetails.calculation.bill_per_member.toLocaleString('id-ID')}
+                                                        Rp {member.bill.toLocaleString('id-ID')}
                                                     </div>
                                                 </TableCell>
                                                 <TableCell className="text-right">
-                                                    <Button variant="outline" size="icon" onClick={() => handleShareToWA(member.name, selectedSessionDetails.calculation.bill_per_member)}>
+                                                    <Button variant="outline" size="icon" onClick={() => handleShareToWA(member.name, member.bill)}>
                                                         <MessageSquare className="h-4 w-4 text-green-600" /><span className="sr-only">Tagih via WhatsApp</span>
                                                     </Button>
                                                 </TableCell>
@@ -287,7 +324,7 @@ export default function SessionHistory({ auth }) {
                             </CardContent>
                         </Card>
                         
-                        <div className="mt-6">
+                        <div className="pb-4">
                             <Button onClick={handleExportPDF} className="w-full">
                                 Ekspor ke PDF
                             </Button>
