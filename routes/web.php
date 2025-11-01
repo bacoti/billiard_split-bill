@@ -41,11 +41,28 @@ Route::get('/dashboard', function () {
 
 // Route khusus untuk halaman pembuatan sesi baru
 Route::get('/session/create', function () {
-    return Inertia::render('CreateSession');
+    return Inertia::render('CreateSession', [
+        'auth' => [
+            'user' => auth()->user(),
+        ],
+    ]);
 })->middleware(['auth', 'verified'])->name('session.create');
 
+// Route untuk halaman riwayat sesi
+Route::get('/session/history', function () {
+    return Inertia::render('SessionHistory', [
+        'auth' => [
+            'user' => auth()->user(),
+        ],
+    ]);
+})->middleware(['auth', 'verified'])->name('session.history');
+
 Route::get('/players', function () {
-    return Inertia::render('PlayerManagement');
+    return Inertia::render('PlayerManagement', [
+        'auth' => [
+            'user' => auth()->user(),
+        ],
+    ]);
 })->middleware(['auth', 'verified'])->name('players.index');
 
 

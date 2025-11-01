@@ -12,8 +12,8 @@ export default function SideNav({ user, open, onOpenChange }) {
                 </SheetHeader>
                 <div className="flex flex-col h-full pb-6">
                     <nav className="flex-grow px-4 space-y-2">
-                        <Button asChild variant={route().current('dashboard') ? 'secondary' : 'ghost'} className="w-full justify-start text-base">
-                            <Link href={route('dashboard')}>
+                        <Button asChild variant={route().current('session.history') ? 'secondary' : 'ghost'} className="w-full justify-start text-base">
+                            <Link href={route('session.history')}>
                                 <History className="mr-3 h-5 w-5" />
                                 Riwayat Sesi
                             </Link>

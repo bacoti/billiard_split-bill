@@ -82,7 +82,7 @@ export default function CreateSession({ auth }) {
         try {
             await axios.post(route('api.game-sessions.store'), payload);
             toast.success('Sesi baru berhasil dibuat!');
-            router.get(route('dashboard'));
+            router.get(route('session.history'));
         } catch (error) {
             if (error.response && error.response.data.errors) {
                 const errorMessages = Object.values(error.response.data.errors).flat();
