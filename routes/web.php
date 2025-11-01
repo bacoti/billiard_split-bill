@@ -16,19 +16,27 @@ use Inertia\Inertia;
 |
 */
 
-// Halaman Landing Page
+// Root path - redirect to login jika belum auth, ke session.create jika sudah
 Route::get('/', function () {
+    if (auth()->check()) {
+        return redirect()->route('session.create');
+    }
+    return redirect()->route('login');
+});
+
+// Welcome page (optional, bisa diakses dari /welcome)
+Route::get('/welcome', function () {
     return Inertia::render('Welcome', [
         'canLogin' => Route::has('login'),
         'canRegister' => Route::has('register'),
         'laravelVersion' => Application::VERSION,
         'phpVersion' => PHP_VERSION,
     ]);
-});
+})->name('welcome');
 
-// Halaman utama setelah login adalah Riwayat Sesi
+// Halaman utama setelah login adalah buat sesi baru
 Route::get('/dashboard', function () {
-    return Inertia::render('SessionHistory');
+    return redirect()->route('session.create');
 })->middleware(['auth', 'verified'])->name('dashboard');
 
 // Route khusus untuk halaman pembuatan sesi baru
