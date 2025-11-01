@@ -4,7 +4,9 @@
     "type": "module",
     "scripts": {
         "build": "vite build",
-        "dev": "vite"
+        "dev": "vite",
+        "postbuild": "mkdir -p dist && cp public/_redirects dist/_redirects"
+
     },
     "devDependencies": {
         "@headlessui/react": "^2.0.0",
