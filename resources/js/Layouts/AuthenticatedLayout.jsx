@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import SideNav from '@/Components/SideNav';
 import { Menu } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Toaster } from '@/components/ui/sonner'; // Impor Toaster
+import { Button } from '@/Components/ui/button';
+import { Toaster } from '@/Components/ui/sonner'; // Impor Toaster
 
 export default function AuthenticatedLayout({ user, header, children }) {
     const [showingNavigation, setShowingNavigation] = useState(false);

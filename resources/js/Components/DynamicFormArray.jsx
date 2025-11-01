@@ -1,6 +1,6 @@
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
+import { Input } from '@/Components/ui/input';
+import { Button } from '@/Components/ui/button';
+import { Label } from '@/Components/ui/label';
 import { Trash2, Plus } from 'lucide-react';
 import { AlertCircle } from 'lucide-react';
 

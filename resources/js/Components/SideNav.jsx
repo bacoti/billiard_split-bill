@@ -1,6 +1,6 @@
 import { Link } from '@inertiajs/react';
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { Button } from '@/components/ui/button';
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/Components/ui/sheet";
+import { Button } from '@/Components/ui/button';
 import { Home, PlusCircle, History, LogOut, Users } from 'lucide-react';
 
 export default function SideNav({ user, open, onOpenChange }) {
