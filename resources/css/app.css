@@ -66,3 +66,29 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Mobile-first responsive improvements */
+@media (max-width: 640px) {
+  /* Ensure minimum touch target size */
+  button,
+  a[role="button"],
+  input[type="button"],
+  input[type="submit"],
+  input[type="reset"] {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  /* Better font size on mobile to prevent zoom */
+  input,
+  select,
+  textarea {
+    min-height: 44px;
+    font-size: 16px;
+  }
+
+  /* Better spacing for form fields */
+  .space-y-2 {
+    @apply space-y-3;
+  }
+}

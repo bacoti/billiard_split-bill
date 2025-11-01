@@ -1,0 +1,77 @@
+/* Mobile-first responsive touch targets */
+@media (max-width: 640px) {
+    /* Ensure minimum touch target size of 44x44px */
+    button,
+    a[role="button"],
+    input[type="button"],
+    input[type="submit"],
+    input[type="reset"] {
+        min-height: 44px;
+        min-width: 44px;
+    }
+
+    /* Better spacing on mobile forms */
+    input,
+    select,
+    textarea {
+        min-height: 44px;
+        font-size: 16px; /* Prevents zoom on iOS */
+    }
+
+    /* Better table on mobile */
+    table {
+        font-size: 14px;
+    }
+
+    /* Better spacing for form fields */
+    .space-y-2 {
+        @apply space-y-3;
+    }
+
+    /* Better gap for mobile cards */
+    .gap-6 {
+        @apply gap-4;
+    }
+}
+
+/* Improve accessibility for keyboard users */
+:focus-visible {
+    @apply outline-none ring-2 ring-offset-2;
+}
+
+/* Better contrast for text on images */
+.text-shadow {
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+/* Smooth animations for better UX */
+* {
+    @apply transition-colors duration-200;
+}
+
+button,
+a {
+    @apply active:scale-95 transition-transform duration-100;
+}
+
+/* Loading states */
+@keyframes pulse {
+    0%,
+    100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.5;
+    }
+}
+
+.animate-pulse {
+    animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Mobile-friendly modal/sheet backdrop */
+@media (max-width: 640px) {
+    [role="dialog"] {
+        @apply max-h-[90vh] overflow-y-auto;
+    }
+}

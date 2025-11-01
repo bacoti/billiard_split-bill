@@ -6,18 +6,21 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { toast } from 'sonner';
-import { Trash2, Eye, MessageSquare, Copy, Clock } from 'lucide-react';
+import { Trash2, Eye, MessageSquare, Copy, Clock, History } from 'lucide-react';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
+import EmptyState from '@/Components/EmptyState';
+import { TableSkeleton } from '@/Components/Skeleton';
 
 export default function SessionHistory({ auth }) {
     const [sessions, setSessions] = useState([]);
     const [selectedSessionDetails, setSelectedSessionDetails] = useState(null);
     const [allPlayers, setAllPlayers] = useState([]);
     const [groupMessage, setGroupMessage] = useState('');
+    const [isLoading, setIsLoading] = useState(false);
 
     useEffect(() => {
         fetchSessions();
@@ -26,11 +29,14 @@ export default function SessionHistory({ auth }) {
 
     const fetchSessions = async () => {
         try {
+            setIsLoading(true);
             const response = await axios.get(route('api.game-sessions.index'));
             setSessions(response.data);
         } catch (error) {
             toast.error('Gagal memuat data sesi.');
             console.error(error);
+        } finally {
+            setIsLoading(false);
         }
     };
 
@@ -191,38 +197,48 @@ export default function SessionHistory({ auth }) {
         >
             <Head title="Riwayat Sesi" />
             <div className="py-6 sm:py-12">
-                <div className="max-w-7xl mx-auto sm:px-6 lg:px-8 px-4">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <Card>
                         <CardHeader>
                             <CardTitle>Daftar Sesi Permainan</CardTitle>
                             <CardDescription>Lihat atau hapus sesi permainan yang sudah Anda simpan.</CardDescription>
                         </CardHeader>
                         <CardContent>
-                            <Table>
-                                <TableHeader><TableRow><TableHead>Detail Sesi</TableHead><TableHead className="text-right">Aksi</TableHead></TableRow></TableHeader>
-                                <TableBody>
-                                    {sessions.length > 0 ? sessions.map(session => (
-                                        <TableRow key={session.id}>
-                                            <TableCell>
-                                                <div className="font-medium">{session.name}</div>
-                                                <div className="text-sm text-muted-foreground">{new Date(session.created_at).toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric' })}</div>
-                                            </TableCell>
-                                            <TableCell className="text-right space-x-2">
-                                                <Sheet>
-                                                    <SheetTrigger asChild>
-                                                        <Button variant="outline" size="icon" onClick={() => fetchSessionDetails(session.id)}>
-                                                            <Eye className="h-4 w-4" /><span className="sr-only">Lihat Detail</span>
-                                                        </Button>
-                                                    </SheetTrigger>
-                                                </Sheet>
-                                                <Button variant="destructive" size="icon" onClick={() => handleDeleteSession(session.id)}>
-                                                    <Trash2 className="h-4 w-4" /><span className="sr-only">Hapus Sesi</span>
-                                                </Button>
-                                            </TableCell>
-                                        </TableRow>
-                                    )) : <TableRow><TableCell colSpan="2" className="text-center h-24">Belum ada sesi tersimpan.</TableCell></TableRow>}
-                                </TableBody>
-                            </Table>
+                            {isLoading ? (
+                                <TableSkeleton rows={3} />
+                            ) : sessions.length > 0 ? (
+                                <Table>
+                                    <TableHeader><TableRow><TableHead>Detail Sesi</TableHead><TableHead className="text-right">Aksi</TableHead></TableRow></TableHeader>
+                                    <TableBody>
+                                        {sessions.map(session => (
+                                            <TableRow key={session.id}>
+                                                <TableCell>
+                                                    <div className="font-medium">{session.name}</div>
+                                                    <div className="text-sm text-muted-foreground">{new Date(session.created_at).toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric' })}</div>
+                                                </TableCell>
+                                                <TableCell className="text-right space-x-2">
+                                                    <Sheet>
+                                                        <SheetTrigger asChild>
+                                                            <Button variant="outline" size="icon" onClick={() => fetchSessionDetails(session.id)}>
+                                                                <Eye className="h-4 w-4" /><span className="sr-only">Lihat Detail</span>
+                                                            </Button>
+                                                        </SheetTrigger>
+                                                    </Sheet>
+                                                    <Button variant="destructive" size="icon" onClick={() => handleDeleteSession(session.id)}>
+                                                        <Trash2 className="h-4 w-4" /><span className="sr-only">Hapus Sesi</span>
+                                                    </Button>
+                                                </TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                            ) : (
+                                <EmptyState
+                                    icon={History}
+                                    title="Belum ada riwayat sesi"
+                                    description="Sesi permainan yang Anda buat akan muncul di sini"
+                                />
+                            )}
                         </CardContent>
                     </Card>
                 </div>

@@ -98,7 +98,7 @@ export default function CreateSession({ auth }) {
         <AuthenticatedLayout user={auth.user} header="Buat Sesi Baru">
             <Head title="Buat Sesi Baru" />
             <div className="py-6 sm:py-12">
-                <div className="max-w-7xl mx-auto sm:px-6 lg:px-8 px-4">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <Card>
                         <form onSubmit={handleSubmit}>
                             <CardHeader>

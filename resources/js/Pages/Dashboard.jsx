@@ -8,16 +8,26 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Toaster, toast } from 'sonner';
-import { PlusCircle, Trash2, Eye } from 'lucide-react';
+import { PlusCircle, Trash2, Eye, TrendingUp, Users, Wallet, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
+import StatCard from '@/Components/StatCard';
+import EmptyState from '@/Components/EmptyState';
+import SearchFilter from '@/Components/SearchFilter';
+import { TableSkeleton } from '@/Components/Skeleton';
+import FormField from '@/Components/FormField';
+import DynamicFormArray from '@/Components/DynamicFormArray';
+import { validateRequired, validateNumber, validateArrayItems } from '@/lib/formValidation';
 
 
 export default function Dashboard({ auth }) {
     // State utama
     const [sessions, setSessions] = useState([]);
+    const [filteredSessions, setFilteredSessions] = useState([]);
     const [selectedSessionDetails, setSelectedSessionDetails] = useState(null);
+    const [isFetching, setIsFetching] = useState(false);
+    const [searchValue, setSearchValue] = useState('');
     
     // State untuk form baru
     const [sessionName, setSessionName] = useState('');
@@ -27,6 +37,10 @@ export default function Dashboard({ auth }) {
     const [tables, setTables] = useState([{ table_number: '', duration_hours: '' }]);
     const [members, setMembers] = useState([{ name: '' }]);
     
+    // State untuk validation
+    const [errors, setErrors] = useState({});
+    const [touched, setTouched] = useState({});
+    
     const [isLoading, setIsLoading] = useState(false);
 
     // Fetch data sesi saat komponen dimuat
@@ -34,13 +48,67 @@ export default function Dashboard({ auth }) {
         fetchSessions();
     }, []);
 
+    // Validate form
+    const validateForm = () => {
+        const newErrors = {};
+
+        // Validate session name
+        if (!sessionName.trim()) {
+            newErrors.sessionName = 'Nama sesi harus diisi';
+        }
+
+        // Validate hourly rate
+        if (!hourlyRate) {
+            newErrors.hourlyRate = 'Tarif per jam harus diisi';
+        } else if (isNaN(hourlyRate) || parseFloat(hourlyRate) <= 0) {
+            newErrors.hourlyRate = 'Tarif per jam harus berupa angka positif';
+        }
+
+        // Validate tables
+        const tableErrors = validateArrayItems(tables, ['table_number', 'duration_hours'], 'Meja');
+        if (Object.keys(tableErrors).length > 0) {
+            Object.assign(newErrors, tableErrors);
+        }
+
+        // Validate members
+        const memberErrors = validateArrayItems(members, ['name'], 'Anggota');
+        if (Object.keys(memberErrors).length > 0) {
+            Object.assign(newErrors, memberErrors);
+        }
+
+        setErrors(newErrors);
+        return Object.keys(newErrors).length === 0;
+    };
+
+    // Filter sessions ketika search value berubah
+    useEffect(() => {
+        if (searchValue.trim() === '') {
+            setFilteredSessions(sessions);
+        } else {
+            const filtered = sessions.filter(session =>
+                session.name.toLowerCase().includes(searchValue.toLowerCase())
+            );
+            setFilteredSessions(filtered);
+        }
+    }, [searchValue, sessions]);
+
+    // Calculate stats
+    const stats = {
+        totalSessions: sessions.length,
+        totalMembers: sessions.reduce((sum, session) => sum + (session.members?.length || 0), 0),
+        totalRevenue: sessions.reduce((sum, session) => sum + (session.total_bill || 0), 0),
+    };
+
     const fetchSessions = async () => {
         try {
+            setIsFetching(true);
             const response = await axios.get('/api/game-sessions');
             setSessions(response.data);
         } catch (error) {
             toast.error('Gagal memuat data sesi.');
             console.error(error);
+        } finally {
+            setIsFetching(false);
         }
     };
 
@@ -59,6 +127,10 @@ export default function Dashboard({ auth }) {
         const values = [...tables];
         values[index][event.target.name] = event.target.value;
         setTables(values);
+        // Clear error untuk field ini ketika user mulai mengedit
+        if (errors[`${index}.table_number`] || errors[`${index}.duration_hours`]) {
+            setTouched(prev => ({ ...prev, [`tables.${index}`]: true }));
+        }
     };
 
     const addTableField = () => {
@@ -105,6 +177,13 @@ export default function Dashboard({ auth }) {
     // Handler untuk submit form
     const handleSubmit = async (e) => {
         e.preventDefault();
+        
+        // Validate form first
+        if (!validateForm()) {
+            toast.error('Harap perbaiki error pada form');
+            return;
+        }
+
         setIsLoading(true);
 
         const payload = {
@@ -121,6 +200,8 @@ export default function Dashboard({ auth }) {
             toast.success('Sesi baru berhasil dibuat!');
             fetchSessions();
             resetForm();
+            setErrors({});
+            setTouched({});
         } catch (error) {
             if (error.response && error.response.data.errors) {
                 const errorMessages = Object.values(error.response.data.errors).flat();
@@ -209,8 +290,33 @@ export default function Dashboard({ auth }) {
             <Head title="Dashboard" />
             <Toaster richColors position="top-center" />
 
-            <div className="py-12">
-                <div className="max-w-7xl mx-auto sm:px-6 lg:px-8 grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="py-6 sm:py-12">
+                {/* Stats Cards */}
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-8">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
+                        <StatCard
+                            icon={TrendingUp}
+                            label="Total Sesi"
+                            value={stats.totalSessions}
+                            subtext="Sesi permainan dibuat"
+                        />
+                        <StatCard
+                            icon={Users}
+                            label="Total Anggota"
+                            value={stats.totalMembers}
+                            subtext="Anggota yang hadir"
+                        />
+                        <StatCard
+                            icon={Wallet}
+                            label="Total Pendapatan"
+                            value={`Rp ${stats.totalRevenue.toLocaleString('id-ID')}`}
+                            subtext="Dari semua sesi"
+                        />
+                    </div>
+                </div>
+
+                {/* Form dan List */}
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
                     {/* Kolom Kiri: Form Input */}
                     <div className="md:col-span-1">
                         <Card>
@@ -220,52 +326,78 @@ export default function Dashboard({ auth }) {
                             </CardHeader>
                             <form onSubmit={handleSubmit}>
                                 <CardContent className="space-y-6">
-                                    <div className="space-y-2">
-                                        <Label htmlFor="sessionName">Nama Sesi</Label>
-                                        <Input id="sessionName" placeholder="Contoh: Main Minggu Malam" value={sessionName} onChange={(e) => setSessionName(e.target.value)} required />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label htmlFor="hourlyRate">Tarif per Jam (Rp)</Label>
-                                        <Input id="hourlyRate" type="number" placeholder="50000" value={hourlyRate} onChange={(e) => setHourlyRate(e.target.value)} required />
-                                    </div>
-                                    <div className='space-y-3'>
-                                        <Label>Data Meja</Label>
-                                        {tables.map((table, index) => (
-                                            <div key={index} className="flex items-center gap-2">
-                                                <Input name="table_number" placeholder={`Meja #${index + 1}`} value={table.table_number} onChange={e => handleTableChange(index, e)} required className="w-1/3" />
-                                                <Input name="duration_hours" type="number" step="0.1" placeholder="Durasi (jam)" value={table.duration_hours} onChange={e => handleTableChange(index, e)} required className="w-2/3" />
-                                                <Button type="button" variant="destructive" size="icon" onClick={() => removeTableField(index)}>
-                                                    <Trash2 className="h-4 w-4" />
-                                                </Button>
-                                            </div>
-                                        ))}
-                                        <Button type="button" variant="outline" size="sm" onClick={addTableField}>
-                                            <PlusCircle className="mr-2 h-4 w-4" /> Tambah Meja
-                                        </Button>
-                                    </div>
-                                    <div className='space-y-3'>
-                                        <Label>Anggota Hadir</Label>
-                                        {members.map((member, index) => (
-                                             <div key={index} className="flex items-center gap-2">
-                                                 <Input name="name" placeholder={`Nama Anggota ${index + 1}`} value={member.name} onChange={e => handleMemberChange(index, e)} required />
-                                                 <Button type="button" variant="destructive" size="icon" onClick={() => removeMemberField(index)}>
-                                                    <Trash2 className="h-4 w-4" />
-                                                </Button>
-                                             </div>
-                                        ))}
-                                         <Button type="button" variant="outline" size="sm" onClick={addMemberField}>
-                                            <PlusCircle className="mr-2 h-4 w-4" /> Tambah Anggota
-                                        </Button>
-                                    </div>
-                                     <div className="grid grid-cols-2 gap-4">
-                                        <div className="space-y-2">
-                                            <Label htmlFor="serviceCharge">Service Charge (Rp)</Label>
-                                            <Input id="serviceCharge" type="number" value={serviceCharge} onChange={(e) => setServiceCharge(e.target.value)} />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <Label htmlFor="discount">Diskon (Rp)</Label>
-                                            <Input id="discount" type="number" value={discount} onChange={(e) => setDiscount(e.target.value)} />
-                                        </div>
+                                    <FormField
+                                        id="sessionName"
+                                        label="Nama Sesi"
+                                        placeholder="Contoh: Main Minggu Malam"
+                                        value={sessionName}
+                                        onChange={(e) => setSessionName(e.target.value)}
+                                        error={errors.sessionName}
+                                        helperText="Berikan nama yang deskriptif untuk sesi ini"
+                                        required
+                                    />
+                                    
+                                    <FormField
+                                        id="hourlyRate"
+                                        label="Tarif per Jam (Rp)"
+                                        type="number"
+                                        placeholder="50000"
+                                        value={hourlyRate}
+                                        onChange={(e) => setHourlyRate(e.target.value)}
+                                        error={errors.hourlyRate}
+                                        helperText="Masukkan tarif per jam untuk perhitungan"
+                                        required
+                                        min="1"
+                                    />
+
+                                    <DynamicFormArray
+                                        label="Data Meja"
+                                        items={tables}
+                                        onAdd={addTableField}
+                                        onRemove={removeTableField}
+                                        onChange={handleTableChange}
+                                        fields={[
+                                            { name: 'table_number', placeholder: 'Nomor Meja', type: 'text', required: true },
+                                            { name: 'duration_hours', placeholder: 'Durasi (jam)', type: 'number', required: true }
+                                        ]}
+                                        errors={errors}
+                                        helperText="Daftar meja yang digunakan"
+                                        addButtonLabel="Tambah Meja"
+                                    />
+
+                                    <DynamicFormArray
+                                        label="Anggota Hadir"
+                                        items={members}
+                                        onAdd={addMemberField}
+                                        onRemove={removeMemberField}
+                                        onChange={handleMemberChange}
+                                        fields={[
+                                            { name: 'name', placeholder: 'Nama Anggota', type: 'text', required: true }
+                                        ]}
+                                        errors={errors}
+                                        helperText="Daftar anggota yang hadir"
+                                        addButtonLabel="Tambah Anggota"
+                                    />
+
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <FormField
+                                            id="serviceCharge"
+                                            label="Service Charge (Rp)"
+                                            type="number"
+                                            value={serviceCharge}
+                                            onChange={(e) => setServiceCharge(e.target.value)}
+                                            error={errors.serviceCharge}
+                                            min="0"
+                                        />
+                                        <FormField
+                                            id="discount"
+                                            label="Diskon (Rp)"
+                                            type="number"
+                                            value={discount}
+                                            onChange={(e) => setDiscount(e.target.value)}
+                                            error={errors.discount}
+                                            min="0"
+                                        />
                                     </div>
                                 </CardContent>
                                 <CardFooter>
@@ -284,40 +416,56 @@ export default function Dashboard({ auth }) {
                                 <CardTitle>Riwayat Sesi</CardTitle>
                                 <CardDescription>Lihat sesi permainan yang sudah Anda simpan.</CardDescription>
                             </CardHeader>
-                            <CardContent>
-                                <Table>
-                                    <TableHeader>
-                                        <TableRow>
-                                            <TableHead>Nama Sesi</TableHead>
-                                            <TableHead>Tanggal</TableHead>
-                                            <TableHead className="text-right">Aksi</TableHead>
-                                        </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                        {sessions.length > 0 ? sessions.map(session => (
-                                            <TableRow key={session.id}>
-                                                <TableCell className="font-medium">{session.name}</TableCell>
-                                                <TableCell>{new Date(session.created_at).toLocaleDateString('id-ID')}</TableCell>
-                                                <TableCell className="text-right space-x-2">
-                                                    <Sheet>
-                                                      <SheetTrigger asChild>
-                                                        <Button variant="outline" size="sm" onClick={() => fetchSessionDetails(session.id)}>
-                                                            <Eye className="h-4 w-4 mr-2"/> Lihat Hasil
-                                                        </Button>
-                                                      </SheetTrigger>
-                                                    </Sheet>
-                                                    <Button variant="destructive" size="sm" onClick={() => handleDeleteSession(session.id)}>
-                                                        <Trash2 className="h-4 w-4"/>
-                                                    </Button>
-                                                </TableCell>
-                                            </TableRow>
-                                        )) : (
+                            <CardContent className="space-y-4">
+                                <SearchFilter
+                                    placeholder="Cari nama sesi..."
+                                    onSearch={setSearchValue}
+                                    showFilters={false}
+                                />
+                                
+                                {isFetching ? (
+                                    <TableSkeleton rows={3} />
+                                ) : filteredSessions.length > 0 ? (
+                                    <Table>
+                                        <TableHeader>
                                             <TableRow>
-                                                <TableCell colSpan="3" className="text-center">Belum ada sesi.</TableCell>
+                                                <TableHead>Nama Sesi</TableHead>
+                                                <TableHead>Tanggal</TableHead>
+                                                <TableHead className="text-right">Aksi</TableHead>
                                             </TableRow>
-                                        )}
-                                    </TableBody>
-                                </Table>
+                                        </TableHeader>
+                                        <TableBody>
+                                            {filteredSessions.map(session => (
+                                                <TableRow key={session.id}>
+                                                    <TableCell className="font-medium">{session.name}</TableCell>
+                                                    <TableCell>{new Date(session.created_at).toLocaleDateString('id-ID')}</TableCell>
+                                                    <TableCell className="text-right space-x-2">
+                                                        <Sheet>
+                                                          <SheetTrigger asChild>
+                                                            <Button variant="outline" size="sm" onClick={() => fetchSessionDetails(session.id)}>
+                                                                <Eye className="h-4 w-4 mr-2"/> Lihat Hasil
+                                                            </Button>
+                                                          </SheetTrigger>
+                                                        </Sheet>
+                                                        <Button variant="destructive" size="sm" onClick={() => handleDeleteSession(session.id)}>
+                                                            <Trash2 className="h-4 w-4"/>
+                                                        </Button>
+                                                    </TableCell>
+                                                </TableRow>
+                                            ))}
+                                        </TableBody>
+                                    </Table>
+                                ) : (
+                                    <EmptyState
+                                        icon={Eye}
+                                        title={searchValue ? "Sesi tidak ditemukan" : "Belum ada sesi"}
+                                        description={
+                                            searchValue 
+                                                ? `Tidak ada sesi yang cocok dengan "${searchValue}"`
+                                                : "Mulai dengan membuat sesi baru di form sebelah kiri"
+                                        }
+                                    />
+                                )}
                             </CardContent>
                         </Card>
                     </div>
@@ -328,7 +476,7 @@ export default function Dashboard({ auth }) {
             <Sheet open={!!selectedSessionDetails} onOpenChange={(open) => !open && setSelectedSessionDetails(null)}>
               <SheetContent className="w-full sm:max-w-lg overflow-y-auto">
                 <SheetHeader>
-                  <SheetTitle>{selectedSessionDetails?.session.name}</SheetTitle>
+                  <SheetTitle>{selectedSessionDetails?.session.name || 'Detail Sesi'}</SheetTitle>
                   <SheetDescription>
                     Detail perhitungan dan pembagian tagihan.
                   </SheetDescription>
@@ -383,7 +531,12 @@ export default function Dashboard({ auth }) {
                         </div>
                     </div>
                 ) : (
-                    <p>Memuat detail...</p>
+                    <div className="flex items-center justify-center py-8">
+                        <div className="text-center">
+                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto mb-2"></div>
+                            <p className="text-sm text-muted-foreground">Memuat detail...</p>
+                        </div>
+                    </div>
                 )}
               </SheetContent>
             </Sheet>

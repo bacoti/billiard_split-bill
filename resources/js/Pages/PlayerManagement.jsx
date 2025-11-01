@@ -9,13 +9,16 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { PlusCircle, Trash2, Edit } from 'lucide-react';
+import { PlusCircle, Trash2, Edit, Users } from 'lucide-react';
+import EmptyState from '@/Components/EmptyState';
+import { TableSkeleton } from '@/Components/Skeleton';
 
 export default function PlayerManagement({ auth }) {
     const [players, setPlayers] = useState([]);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [editingPlayer, setEditingPlayer] = useState(null);
     const [formData, setFormData] = useState({ name: '', phone_number: '' });
+    const [isLoading, setIsLoading] = useState(false);
 
     useEffect(() => {
         fetchPlayers();
@@ -23,10 +26,13 @@ export default function PlayerManagement({ auth }) {
 
     const fetchPlayers = async () => {
         try {
+            setIsLoading(true);
             const response = await axios.get(route('api.players.index'));
             setPlayers(response.data);
         } catch (error) {
             toast.error('Gagal memuat daftar anggota.');
+        } finally {
+            setIsLoading(false);
         }
     };
     
@@ -72,7 +78,7 @@ export default function PlayerManagement({ auth }) {
         <AuthenticatedLayout user={auth.user} header="Manajemen Anggota">
             <Head title="Manajemen Anggota" />
             <div className="py-6 sm:py-12">
-                <div className="max-w-7xl mx-auto sm:px-6 lg:px-8 px-4">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <Card>
                         <CardHeader className="flex flex-row items-center justify-between">
                             <div>
@@ -84,21 +90,33 @@ export default function PlayerManagement({ auth }) {
                             </Button>
                         </CardHeader>
                         <CardContent>
-                            <Table>
-                                <TableHeader><TableRow><TableHead>Nama</TableHead><TableHead>No. Telepon</TableHead><TableHead className="text-right">Aksi</TableHead></TableRow></TableHeader>
-                                <TableBody>
-                                    {players.length > 0 ? players.map(player => (
-                                        <TableRow key={player.id}>
-                                            <TableCell className="font-medium">{player.name}</TableCell>
-                                            <TableCell>{player.phone_number || '-'}</TableCell>
-                                            <TableCell className="text-right space-x-2">
-                                                <Button variant="outline" size="icon" onClick={() => handleOpenDialog(player)}><Edit className="h-4 w-4" /></Button>
-                                                <Button variant="destructive" size="icon" onClick={() => handleDelete(player.id)}><Trash2 className="h-4 w-4" /></Button>
-                                            </TableCell>
-                                        </TableRow>
-                                    )) : <TableRow><TableCell colSpan="3" className="text-center h-24">Belum ada anggota.</TableCell></TableRow>}
-                                </TableBody>
-                            </Table>
+                            {isLoading ? (
+                                <TableSkeleton rows={3} />
+                            ) : players.length > 0 ? (
+                                <Table>
+                                    <TableHeader><TableRow><TableHead>Nama</TableHead><TableHead>No. Telepon</TableHead><TableHead className="text-right">Aksi</TableHead></TableRow></TableHeader>
+                                    <TableBody>
+                                        {players.map(player => (
+                                            <TableRow key={player.id}>
+                                                <TableCell className="font-medium">{player.name}</TableCell>
+                                                <TableCell>{player.phone_number || '-'}</TableCell>
+                                                <TableCell className="text-right space-x-2">
+                                                    <Button variant="outline" size="icon" onClick={() => handleOpenDialog(player)}><Edit className="h-4 w-4" /></Button>
+                                                    <Button variant="destructive" size="icon" onClick={() => handleDelete(player.id)}><Trash2 className="h-4 w-4" /></Button>
+                                                </TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                            ) : (
+                                <EmptyState
+                                    icon={Users}
+                                    title="Belum ada anggota"
+                                    description="Tambahkan anggota tetap Anda untuk mempermudah pembuatan sesi permainan"
+                                    actionLabel="Tambah Anggota Pertama"
+                                    onAction={() => handleOpenDialog()}
+                                />
+                            )}
                         </CardContent>
                     </Card>
                 </div>
