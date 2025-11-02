@@ -73,3 +73,8 @@ Route::middleware('auth')->group(function () {
 });
 
 require __DIR__.'/auth.php';
+
+// Ensure Sanctum CSRF cookie endpoint is available
+Route::middleware('web')->get('/sanctum/csrf-cookie', function () {
+    return response()->json(['message' => 'CSRF cookie set']);
+});

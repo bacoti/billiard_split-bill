@@ -17,26 +17,33 @@ if (token) {
     console.error('CSRF token not found: https://laravel.com/docs/csrf#csrf-x-csrf-token');
 }
 
-// Add request interceptor to handle CSRF cookie
+// Add request interceptor to handle authentication
 window.axios.interceptors.request.use(
-    config => {
-        // For API routes, ensure we're authenticated
-        if (config.url.startsWith('/api/')) {
-            // Get CSRF cookie if not already set
-            const csrfCookie = document.cookie
-                .split('; ')
-                .find(row => row.startsWith('XSRF-TOKEN='));
-            
-            if (!csrfCookie && !config._retry) {
+    async config => {
+        // For API routes, ensure we get CSRF cookie first
+        if (config.url.startsWith('/api/') && !config._retry) {
+            try {
                 // Get CSRF cookie from sanctum/csrf-cookie endpoint
-                return window.axios.get('/sanctum/csrf-cookie').then(() => {
-                    config._retry = true;
-                    return config;
-                });
+                await window.axios.get('/sanctum/csrf-cookie');
+                config._retry = true;
+            } catch (error) {
+                console.warn('Failed to get CSRF cookie:', error);
             }
         }
         return config;
     },
     error => Promise.reject(error)
+);
+
+// Add response interceptor to handle 401 errors
+window.axios.interceptors.response.use(
+    response => response,
+    error => {
+        if (error.response?.status === 401) {
+            // Redirect to login on unauthorized
+            window.location.href = '/login';
+        }
+        return Promise.reject(error);
+    }
 );
 
